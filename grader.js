@@ -28,7 +28,7 @@ var rest = require('restler');
 var HTMLFILE_DEFAULT = "index.html";
 var CHECKSFILE_DEFAULT = "checks.json";
 var URLLINK_DEFAULT = "http://hidden-anchorage-4769.herokuapp.com";
-
+var fileinput = "urlfile.html";
 var assertFileExists = function(infile) {
     var instr = infile.toString();
     if(!fs.existsSync(instr)) {
@@ -46,26 +46,21 @@ var loadChecks = function(checksfile) {
     return JSON.parse(fs.readFileSync(checksfile));
 };
 
-var urlresponse = function(apiurl) {
-    var response2console = function(result, response) {
+var urlresponse = function(fileinput, checkinput) {
+        var response2console = function(result, response) {
             if (result instanceof Error) {
                 console.error('Error: ' + util.format(response.message));
                 process.exit(1);
-            }
-	    return result;
-        };
-    rest.get(apiurl).on('complete', response2console);
-};
+            } else {
 
-var urlDefaultResponse = function(apiurl) {
-    var response2console = function(result, response) {
-            if (result instanceof Error) {
-                console.error('Error: ' + util.format(response.message));
-                process.exit(1);
+            fs.writeFileSync(fileinput, result);
+            // console.log(result);
+            var checkJson = checkHtmlFile(fileinput, checkinput);
+            var outJson = JSON.stringify(checkJson, null, 4);
+            console.log(outJson);
             }
-            return result;
         };
-    rest.get('http://hidden-anchorage-4769.herokuapp.com').on('complete', response2console);
+        return response2console; 
 };
 
 var checkHtmlFile = function(htmlfile, checksfile) {
@@ -88,12 +83,21 @@ var clone = function(fn) {
 if(require.main == module) {
     program
         .option('-c, --checks <check_file>', 'Path to checks.json', clone(assertFileExists), CHECKSFILE_DEFAULT)
-        .option('-f, --file [html_file]', 'Path to index.html', clone(assertFileExists), HTMLFILE_DEFAULT)
-        .option('-u, --url [url_link]', 'URL Path to index.html', clone(urlresponse), clone(urlDefaultResponse))
+        .option('-f, --file [html_file]', 'Path to index.html', clone(assertFileExists))
+        .option('-u, --url [url_link]', 'URL Path to index.html')
         .parse(process.argv);
-    var checkJson = checkHtmlFile(program.file, program.checks);
-    var outJson = JSON.stringify(checkJson, null, 4);
-    console.log(outJson);
+   
+    if(typeof program.file != "undefined"){
+      fileinput = program.file;
+      var checkJson = checkHtmlFile(fileinput, program.checks);
+      var outJson = JSON.stringify(checkJson, null, 4);
+      console.log(outJson); 
+
+    } else{
+       var response2console = urlresponse(fileinput, program.checks); 
+       rest.get(program.url).on('complete', response2console); 
+              
+     }	
 } else {
     exports.checkHtmlFile = checkHtmlFile;
 }
